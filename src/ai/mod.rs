@@ -21,8 +21,7 @@ pub fn test_ai() {
         }
 
         for (_, actor) in creeps {
-            let mut x = actor.borrow_mut();
-            x.process()
+            actor.borrow().process()
         }
     });
 }

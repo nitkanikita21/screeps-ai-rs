@@ -50,9 +50,6 @@ impl<A> FSMachine<A> {
         
         let ac = rc_actor.borrow();
         rc_state.run(&*ac);
-        drop(ac);
-
-        let ac = rc_actor.borrow();
 
         let Some(((_, to), _)) = self.conditions.iter().find(|((from, _), c)| {
             *from == rc_state.id()

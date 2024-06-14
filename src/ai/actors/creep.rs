@@ -1,4 +1,4 @@
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 use ecow::EcoString;
 use getset::{CopyGetters, Getters};
@@ -9,7 +9,7 @@ use crate::ai::fsm::state::State;
 #[derive()]
 pub struct CreepActor {
     creep: Creep,
-    fsm: Box<FSMachine<CreepActor>>
+    fsm: RefCell<FSMachine<CreepActor>>
 }
 
 impl CreepActor {
@@ -25,12 +25,12 @@ impl CreepActor {
             fsm.set_condition(idle.clone(), mining.clone(), Rc::new(| a | a.creep.name() == "TEST"));
             RefCell::new(Self {
                 creep,
-                fsm: Box::new(fsm)
+                fsm: RefCell::new(fsm)
             })
         })
     }
-    pub fn process(&mut self) {
-        self.fsm.process()
+    pub fn process(&self) {
+        self.fsm.borrow_mut().process()
     }
 }
 
