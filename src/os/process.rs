@@ -12,45 +12,46 @@ pub struct Process {
     runnable: Box<ProcessRunnable>,
 
     #[getset(get_copy = "pub")]
-    run_strategy: RunStrategy,
+    wait_time: u16,
+
+    #[getset(get = "pub")]
+    flags: Vec<ProcessFlag>
 }
+
+#[derive(Copy, Clone, Ord, PartialOrd, Eq, PartialEq)]
+pub enum ProcessFlag {
+    CpuBucket,
+    GeneratePixel
+}
+
 
 impl Process {
     pub fn new(
         id: u16,
         name: Option<String>,
-        run_strategy: RunStrategy,
+        wait_time: u16,
+        flags: Vec<ProcessFlag>,
         runnable: Box<ProcessRunnable>,
     ) -> Self {
         Self {
             id,
             runnable,
-            run_strategy,
+            wait_time,
+            flags,
             name: name.unwrap_or_else(|| id.to_string()),
         }
     }
-    pub fn run(&self) -> anyhow::Result<()> {
+    pub fn run(&mut self) -> anyhow::Result<()> {
+        self.wait_time = 0;
         (self.runnable)(self)
     }
-}
-
-#[derive(PartialOrd, PartialEq, Copy, Clone)]
-pub enum RunStrategy {
-    Always,
-    EveryNTicks(usize),
-    EveryNSecond(usize),
-    HasCpu(f64),
-    HasBucketCpu(f64),
-}
-
-impl RunStrategy {
-    pub fn priority(&self) -> usize {
-        match self {
-            RunStrategy::Always => 1,
-            RunStrategy::EveryNTicks(_) => 2,
-            RunStrategy::EveryNSecond(_) => 3,
-            RunStrategy::HasCpu(_) => 4,
-            RunStrategy::HasBucketCpu(_) => 5,
-        }
+    
+    pub fn increment_wait_time(&mut self) {
+        self.wait_time += 1;
+    }
+    
+    pub fn has_flag(&self, flag: ProcessFlag) -> bool {
+        self.flags.contains(&flag)
     }
 }
+

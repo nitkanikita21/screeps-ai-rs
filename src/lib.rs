@@ -1,11 +1,17 @@
+use std::fmt::format;
+use std::thread::{sleep, spawn};
+use std::time::Duration;
 use std::{
     cell::RefCell,
     collections::{hash_map::Entry, HashMap, HashSet},
 };
-use std::thread::spawn;
 
+use crate::os::kernel::Kernel;
+use crate::os::process::ProcessFlag;
+use crate::os::process_table::Priority;
 use js_sys::{JsString, Object, Reflect};
 use log::*;
+use screeps::game::rooms;
 use screeps::{
     constants::{ErrorCode, Part, ResourceType},
     enums::StructureObject,
@@ -13,15 +19,13 @@ use screeps::{
     local::ObjectId,
     objects::{Creep, Source, StructureController},
     prelude::*,
+    TextAlign, TextStyle,
 };
 use wasm_bindgen::prelude::*;
-use crate::os::kernel::Kernel;
-use crate::os::process::RunStrategy;
 
-mod logging;
 mod ai;
+mod logging;
 mod os;
-
 // this is one way to persist data between ticks within Rust's memory, as opposed to
 // keeping state in memory on game objects - but will be lost on global resets!
 thread_local! {
@@ -57,19 +61,35 @@ pub fn game_loop() {
         }
     });*/
 
-    KERNEL.with_borrow_mut(| kernel | {
+    KERNEL.with_borrow_mut(|kernel| {
         INIT_PROCESS.call_once(|| {
-            kernel.new_process(Some("ai".to_string()), RunStrategy::Always, Box::new(| _ | {
-                for creep in game::creeps().values() {
-                    creep.say("HI", true).map_err(| _ | anyhow::Error::msg("err"))?
-                }
-                
-                Ok(())
-            }));
+            kernel.new_process(
+                Some("ai".to_string()),
+                Priority::new(4),
+                Vec::new(),
+                Box::new(|p| {
+                    ai::test_ai();
+
+                    Ok(())
+                }),
+            );
+
+            kernel.new_process(
+                Some("pixel".to_string()),
+                Priority::new(1),
+                vec![ProcessFlag::GeneratePixel],
+                Box::new(|_| {
+                    game::cpu::generate_pixel()
+                        .map_err(|e| anyhow::Error::msg(format!("{:?}", e)))?;
+
+                    Ok(())
+                }),
+            );
         });
-        
+
         kernel.tick()
     });
 
-    info!("done! cpu: {}", game::cpu::get_used())
+    info!("done! cpu: {}", game::cpu::get_used());
+    
 }
